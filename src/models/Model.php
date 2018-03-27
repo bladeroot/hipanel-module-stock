@@ -90,6 +90,13 @@ class Model extends YiiModel
             ],
             [['is_favourite'], 'boolean'],
             [['id', 'type_id', 'tariff_id', 'profile_id'], 'integer'],
+            [
+                ['partno', 'model'],
+                'match',
+                'pattern' => '/^[a-zA-Z0-9+\/.,_ -]+$/',
+                'message' => Yii::t('hipanel:stock', 'Field "{attribute}" can contain Latin characters, numbers, space, plus, dot'),
+                'on' => ['create', 'update'],
+            ],
 
             // Delete
             [['id'], 'integer', 'on' => ['delete']],
