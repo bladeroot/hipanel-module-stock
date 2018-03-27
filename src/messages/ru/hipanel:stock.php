@@ -105,4 +105,6 @@ return [
     'Limit' => 'Лимит',
     'Model groups' => 'Группы моделей',
     'Create group' => 'Создать группу',
+
+    'Field "{attribute}" can contain Latin characters, numbers, space, plus, dot' => 'Поле "{attribute}" может содержать символы латинского алфавита, цифры, пробелы, знаки плюс, точку, дефис, нижнее подчеркивание',
 ];
