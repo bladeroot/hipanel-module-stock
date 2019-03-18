@@ -5,6 +5,7 @@ use hipanel\models\IndexPageUiOptions;
 use hipanel\modules\stock\grid\PartGridLegend;
 use hipanel\modules\stock\grid\PartGridView;
 use hipanel\modules\stock\widgets\PartLegend;
+use hipanel\widgets\AjaxModalWithTemplatedButton;
 use hipanel\widgets\gridLegend\GridLegend;
 use hipanel\widgets\IndexPage;
 use hipanel\widgets\AjaxModal;
@@ -30,7 +31,9 @@ $this->params['breadcrumbs'][] = $this->title;
         <?php $page->endContent() ?>
 
         <?php $page->beginContent('main-actions') ?>
-            <?= Html::a(Yii::t('hipanel', 'Create'), 'create', ['class' => 'btn btn-sm btn-success']) ?>
+            <?php if (Yii::$app->user->can('part.create')) : ?>
+                <?= Html::a(Yii::t('hipanel', 'Create'), 'create', ['class' => 'btn btn-sm btn-success']) ?>
+            <?php endif ?>
         <?php $page->endContent() ?>
 
 
@@ -49,38 +52,9 @@ $this->params['breadcrumbs'][] = $this->title;
         <?php $page->endContent() ?>
 
         <?php $page->beginContent('bulk-actions') ?>
-            <div class="dropdown" style="display: inline-block">
-                <button type="button" class="btn btn-default dropdown-toggle btn-sm" data-toggle="dropdown" aria-haspopup="true"
-                        aria-expanded="false">
-                    <?= Yii::t('hipanel:stock', 'Bulk actions') ?>&nbsp;
-                    <span class="caret"></span>
-                </button>
-                <?= Dropdown::widget([
-                    'encodeLabels' => false,
-                    'items' => [
-                        ['label' => Yii::t('hipanel:stock', 'Repair'), 'url' => '#', 'linkOptions' => ['data-action' => 'repair']],
-                        ['label' => Yii::t('hipanel:stock', 'Copy'), 'url' => '#', 'linkOptions' => ['data-action' => 'copy']],
-                        ['label' => Yii::t('hipanel:stock', 'Replace'), 'url' => '#', 'linkOptions' => ['data-action' => 'replace']],
 
-                        ['label' => Yii::t('hipanel:stock', 'Reserve'), 'url' => '#', 'linkOptions' => ['data-action' => 'reserve']],
-                        ['label' => Yii::t('hipanel:stock', 'Unreserve'), 'url' => '#', 'linkOptions' => ['data-action' => 'unreserve']],
-                        ['label' => Yii::t('hipanel:stock', 'RMA'), 'url' => '#', 'linkOptions' => ['data-action' => 'rma']],
-
-                        ['label' => Yii::t('hipanel:stock', 'Update'), 'url' => '#', 'linkOptions' => ['data-action' => 'update']],
-                        ['label' => Yii::t('hipanel:stock', 'Update Order No.'), 'url' => '#', 'linkOptions' => ['data-action' => 'update-order-no']],
-                        ['label' => Yii::t('hipanel:stock', 'Change model'), 'url' => '#', 'linkOptions' => ['data-action' => 'change-model']],
-
-                        '<li role="presentation" class="divider"></li>',
-
-                        ['label' => Yii::t('hipanel:stock', 'Move by one'), 'url' => '#', 'linkOptions' => ['data-action' => 'move-by-one']],
-                        ['label' => Yii::t('hipanel:stock', 'To move'), 'url' => '#', 'linkOptions' => ['data-action' => 'move']],
-                        ['label' => Yii::t('hipanel:stock', 'Move by {0}', 2), 'url' => '#', 'linkOptions' => ['data-action' => 'move?groupBy=2']],
-                        ['label' => Yii::t('hipanel:stock', 'Move by {0}', 4), 'url' => '#', 'linkOptions' => ['data-action' => 'move?groupBy=4']],
-                        ['label' => Yii::t('hipanel:stock', 'Move by {0}', 8), 'url' => '#', 'linkOptions' => ['data-action' => 'move?groupBy=8']],
-                        ['label' => Yii::t('hipanel:stock', 'Move by {0}', 16), 'url' => '#', 'linkOptions' => ['data-action' => 'move?groupBy=16']],
-                    ],
-                ]); ?>
-            </div>
+            <?= $page->withPermission('move.create', $page->renderBulkButton('rma', Yii::t('hipanel:stock', 'RMA'))) ?>
+            <?= $page->withPermission('move.create', $page->renderBulkButton('move', Yii::t('hipanel:stock', 'To move'))) ?>
             <?php if (Yii::$app->user->can('part.sell')) : ?>
                 <?= AjaxModal::widget([
                     'bulkPage' => true,
@@ -92,29 +66,160 @@ $this->params['breadcrumbs'][] = $this->title;
                     'header' => Html::tag('h4', Yii::t('hipanel:stock', 'Sell parts'), ['class' => 'modal-title']),
                     'toggleButton' => ['label' => Yii::t('hipanel:stock', 'Sell parts'), 'class' => 'btn btn-default btn-sm'],
                 ]) ?>
-            <?php endif; ?>
-            <?= AjaxModal::widget([
-                'bulkPage' => true,
-                'id' => 'set-serial-modal',
-                'scenario' => 'set-serial',
-                'actionUrl' => ['bulk-set-serial'],
-                'handleSubmit' => Url::toRoute('set-serial'),
-                'size' => Modal::SIZE_LARGE,
-                'header' => Html::tag('h4', Yii::t('hipanel:stock', 'Set serial'), ['class' => 'modal-title']),
-                'toggleButton' => ['label' => Yii::t('hipanel:stock', 'Set serial'), 'class' => 'btn btn-default btn-sm'],
-            ]) ?>
-            <?= AjaxModal::widget([
-                'bulkPage' => true,
-                'id' => 'bulk-set-price-modal',
-                'scenario' => 'bulk-set-price',
-                'actionUrl' => ['bulk-set-price'],
-                'size' => Modal::SIZE_LARGE,
-                'header' => Html::tag('h4', Yii::t('hipanel:stock', 'Set price'), ['class' => 'modal-title']),
-                'toggleButton' => ['label' => Yii::t('hipanel:stock', 'Set price'), 'class' => 'btn btn-default btn-sm'],
-            ]) ?>
+            <?php endif ?>
+
+            <?php if (Yii::$app->user->can('part.create') || Yii::$app->user->can('part.update') || Yii::$app->user->can('move.create')) : ?>
+                <div class="dropdown" style="display: inline-block">
+                    <button type="button" class="btn btn-default dropdown-toggle btn-sm" data-toggle="dropdown" aria-haspopup="true"
+                            aria-expanded="false">
+                        <?= Yii::t('hipanel:stock', 'Bulk actions') ?>&nbsp;
+                        <span class="caret"></span>
+                    </button>
+                    <?= Dropdown::widget([
+                        'encodeLabels' => false,
+                        'items' => array_filter([
+                            Yii::$app->user->can('part.update') ? AjaxModalWithTemplatedButton::widget([
+                                'ajaxModalOptions' => [
+                                    'id' => 'set-serial-modal',
+                                    'bulkPage' => true,
+                                    'header' => Html::tag('h4', Yii::t('hipanel:stock', 'Set serial'), ['class' => 'modal-title']),
+                                    'scenario' => 'set-serial',
+                                    'actionUrl' => ['bulk-set-serial'],
+                                    'size' => Modal::SIZE_LARGE,
+                                    'handleSubmit' => Url::toRoute('set-serial'),
+                                    'toggleButton' => [
+                                        'tag' => 'a',
+                                        'label' => Yii::t('hipanel:stock', 'Set serial'),
+                                    ],
+                                ],
+                                'toggleButtonTemplate' => '<li>{toggleButton}</li>',
+                            ]) : null,
+                            Yii::$app->user->can('part.update') ? AjaxModalWithTemplatedButton::widget([
+                                'ajaxModalOptions' => [
+                                    'id' => 'bulk-set-price-modal',
+                                    'bulkPage' => true,
+                                    'header' => Html::tag('h4', Yii::t('hipanel:stock', 'Set price'), ['class' => 'modal-title']),
+                                    'scenario' => 'bulk-set-price',
+                                    'toggleButton' => [
+                                        'tag' => 'a',
+                                        'label' => Yii::t('hipanel:stock', 'Set price'),
+                                    ],
+                                ],
+                                'toggleButtonTemplate' => '<li>{toggleButton}</li>',
+                            ]) : null,
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Repair'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'repair',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Copy'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'copy',
+                                ],
+                                'visible' => Yii::$app->user->can('part.create'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Replace'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'replace',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Reserve'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'reserve',
+                                ],
+                                'visible' => Yii::$app->user->can('part.update'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Unreserve'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'unreserve',
+                                ],
+                                'visible' => Yii::$app->user->can('part.update'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Update'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'update',
+                                ],
+                                'visible' => Yii::$app->user->can('part.update'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Update Order No.'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'update-order-no',
+                                ],
+                                'visible' => Yii::$app->user->can('part.update'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Change model'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'change-model',
+                                ],
+                                'visible' => Yii::$app->user->can('part.update'),
+                            ],
+                            '<li role="presentation" class="divider"></li>',
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Move by one'),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'move-by-one',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Move by {0}', 2),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'move?groupBy=2',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Move by {0}', 4),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'move?groupBy=4',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Move by {0}', 8),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'move?groupBy=8',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+                            [
+                                'label' => Yii::t('hipanel:stock', 'Move by {0}', 16),
+                                'url' => '#',
+                                'linkOptions' => [
+                                    'data-action' => 'move?groupBy=16',
+                                ],
+                                'visible' => Yii::$app->user->can('move.create'),
+                            ],
+                        ]),
+                    ]) ?>
+                </div>
+            <?php endif ?>
             <?php if (Yii::$app->user->can('part.delete')) : ?>
                 <?= $page->renderBulkButton('trash', Yii::t('hipanel:stock', 'Trash'), ['color' => 'danger']) ?>
-            <?php endif; ?>
+            <?php endif ?>
         <?php $page->endContent() ?>
 
         <?php $page->beginContent('table') ?>
