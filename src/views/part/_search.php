@@ -97,6 +97,7 @@ JS
     <?= $search->field('rack_in')->widget(HubCombo::class, [
         'multiple' => true,
         'hubType' => 'rack',
+        'showDeleted' => true,
     ]) ?>
 </div>
 
