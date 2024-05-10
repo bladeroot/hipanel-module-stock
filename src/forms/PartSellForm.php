@@ -22,6 +22,7 @@ class PartSellForm extends Part
             [['ids'], 'each', 'rule' => ['integer']],
             [['sums'], 'each', 'rule' => ['required']],
             [['sums'], 'each', 'rule' => ['number']],
+            [['reason'], 'each', 'rule' => ['integer']],
         ]);
     }
 
@@ -32,6 +33,7 @@ class PartSellForm extends Part
             'contact_id' => Yii::t('hipanel', 'Contact'),
             'description' => Yii::t('hipanel', 'Description'),
             'bill_id' => Yii::t('hipanel', 'Bill'),
+            'reason' => Yii::t('hipanel', 'Ticket'),
         ]);
     }
 

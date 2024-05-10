@@ -86,6 +86,7 @@ JS
     <?= $search->field('rack_in')->widget(HubCombo::class, [
         'multiple' => true,
         'hubType' => 'rack',
+        'showDeleted' => true,
     ]) ?>
 </div>
 
@@ -100,7 +101,9 @@ JS
 </div>
 
 <div class="col-md-4 col-sm-6 col-xs-12">
-    <?= $search->field('place_in')->widget(LocationsCombo::class, ['multiple' => true]) ?>
+    <?= $search->field('place_in')->widget(LocationsCombo::class, [
+        'multiple' => true,
+    ]) ?>
 </div>
 
 <div class="col-md-4 col-sm-6 col-xs-12">
