@@ -163,6 +163,8 @@ class HardwareSettingsForm extends Widget
             'ports_quantity' => $this->getPortsQuantity($form, $type, $transform, $attribute),
             'ports_speed' => $this->getPortsSpeed($form, $type, $transform, $attribute),
             'port_type' => $this->getPortType($form, $type, $transform, $attribute),
+            'firmware' => $this->getFirmware($form, $type, $transform, $attribute),
+            'slot_type' => $this->getSlotType($form, $type, $transform, $attribute),
             'size' => $this->getSize($form, $type, $transform, $attribute),
             'type' => $this->getType($form, $type, $transform, $attribute),
             'units_qty' => $this->getUnitsQty($form, $type, $transform, $attribute),
@@ -310,6 +312,49 @@ class HardwareSettingsForm extends Widget
                         'QSFP+' => 'QSFP+',
                         'QSFP28' => 'QSFP28',
                         'Infiniband' => 'Infiniband',
+                    ],
+                    [
+                        'prompt' => '--'
+                    ]
+                )
+                ->label($this->model->getAttributeLabel($attribute));
+        }
+
+        return $this->getDefaultField($form, $type, $transform, $attribute);
+    }
+
+    private function getFirmware(ActiveForm $form, string $type, \Closure $transform, string $attribute): ActiveField
+    {
+        if ($type === 'net_adapter') {
+            return $form->field($this->model, $transform($attribute))
+                ->dropDownList(
+                    [
+                        'Mellanox' => 'Mellanox',
+                        'Intel' => 'Intel',
+                        'Broadcom' => 'Broadcom',
+                        'Marvell' => 'Marvell',
+                    ],
+                    [
+                        'prompt' => '--'
+                    ]
+                )
+                ->label($this->model->getAttributeLabel($attribute));
+        }
+
+        return $this->getDefaultField($form, $type, $transform, $attribute);
+    }
+
+    private function getSlotType(ActiveForm $form, string $type, \Closure $transform, string $attribute): ActiveField
+    {
+        if ($type === 'net_adapter') {
+            return $form->field($this->model, $transform($attribute))
+                ->dropDownList(
+                    [
+                        'Micro-LP' => 'Micro-LP',
+                        'rNDC' => 'rNDC',
+                        'OCP' => 'OCP',
+                        'PCIe' => 'PCIe',
+                        'WIO' => 'WIO',
                     ],
                     [
                         'prompt' => '--'
