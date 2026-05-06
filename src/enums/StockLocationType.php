@@ -25,4 +25,5 @@ enum StockLocationType: string
     case ALIAS_GROUP_RMA = 'alias_group_rma';
     case ALIAS_GROUP_FOR_TEST = 'alias_group_for-test';
     case ALIAS_GROUP_STOCK = 'alias_group_stock';
+    case DISPOSAL = 'disposal';
 }
