@@ -21,7 +21,6 @@ return [
         '@move'           => '/stock/move',
         '@hwconfig'       => '/stock/hwconfig',
         '@order'          => '/stock/order',
-        '@installment-plan' => '/stock/installment-plan',
     ],
     'modules' => [
         'stock' => [
