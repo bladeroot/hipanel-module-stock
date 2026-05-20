@@ -21,6 +21,9 @@ class HardwareSettingsForm extends Widget
                 'HHHL' => 'SSD HHHL',
                 'U.3' => 'SSD U.3',
                 'M.2' => 'SSD M.2',
+                'EDSFF E1.S' => 'SSD EDSFF E1.S',
+                'EDSFF E1.L' => 'SSD EDSFF E1.L',
+                'U.2' => 'SSD U.2',
             ],
         ];
     public const array INTERFACE = [
