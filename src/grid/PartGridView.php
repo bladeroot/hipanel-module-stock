@@ -257,20 +257,12 @@ class PartGridView extends BoxedGridView
                 'idAttribute' => 'buyer_id',
                 'attribute' => 'buyer',
                 'footer' => '<b>' . Yii::t('hipanel:stock', 'TOTAL on screen') . '</b>',
+                'visible' => Yii::$app->user->can('access-subclients'),
             ],
             'simple_buyer' => [
                 'attribute' => 'buyer',
                 'enableSorting' => true,
                 'filter' => false,
-            ],
-            'in-sale-buyer' => [
-                'attribute' => 'sale.buyer',
-                'format' => 'raw',
-                'value' => fn(Part $model): ?string => $model->isRelationPopulated('sale') && $model->sale->buyer ? Html::a(
-                    Html::encode($model->sale->buyer),
-                    ['@client/view', 'id' => $model->sale->buyer_id]
-                ) : null,
-                'visible' => Yii::$app->user->can('access-subclients'),
             ],
             'selling_price' => [
                 'format' => 'raw',

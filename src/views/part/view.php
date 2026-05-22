@@ -99,7 +99,7 @@ $this->params['breadcrumbs'][] = yii::t('hipanel', $this->title);
                                 'columns' => [
                                     'price',
                                     'selling_price',
-                                    'in-sale-buyer',
+                                    'buyer',
                                     'sale',
                                 ],
                             ]) ?>
