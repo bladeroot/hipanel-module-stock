@@ -286,12 +286,17 @@ class HardwareSettingsForm extends Widget
                         ->dropDownList(
                             [
                                 '1G' => '1G',
+                                '2.5G' => '2.5G',
                                 '10G' => '10G',
                                 '10G/25G' => '10G/25G',
                                 '25G' => '25G',
                                 '40G' => '40G',
+                                '50G' => '50G',
                                 '56G' => '56G',
                                 '100G' => '100G',
+                                '200G' => '200G',
+                                '400G' => '400G',
+                                '800G' => '800G',
                             ],
                             [
                                 'prompt' => '--',
@@ -314,8 +319,12 @@ class HardwareSettingsForm extends Widget
                                 'SFP+' => 'SFP+',
                                 'SFP+/SFP28' => 'SFP+/SFP28',
                                 'SFP28' => 'SFP28',
+                                'SFP56' => 'SFP56',
+                                'QSFP' => 'QSFP',
                                 'QSFP+' => 'QSFP+',
                                 'QSFP28' => 'QSFP28',
+                                'QSFP56' => 'QSFP56',
+                                'QSFP112' => 'QSFP112',
                                 'Infiniband' => 'Infiniband',
                             ],
                             [
@@ -334,6 +343,7 @@ class HardwareSettingsForm extends Widget
             return $form->field($this->model, $transform($attribute))
                         ->dropDownList(
                             [
+                                'Nvidia' => 'Nvidia',
                                 'Mellanox' => 'Mellanox',
                                 'Intel' => 'Intel',
                                 'Broadcom' => 'Broadcom',
