@@ -89,7 +89,7 @@ $('#partsellform-bill_id').on('select2:select', function () {
     $.post('/finance/bill/index', {return: ['id', 'time', 'currency', 'client_id', 'client'], select: 'min', id: selectedBillId}).done(function (bills) {
         let auto = bills.filter(bill => bill.id.toString() === selectedBillId.toString());
         if (auto.length > 0) {
-            $('#partsellform-time').val(auto[0].time).attr({readonly: true}).parent().datetimepicker('remove');
+            $('#partsellform-time').val(auto[0].time).attr({readonly: true}).get(0)._flatpickr.destroy();
             $('#partsellform-currency').val(auto[0].currency).attr('readonly', true);
             $('#partsellform-currency option:not(:selected)').attr('disabled', true);
             setContactFieldByClientName(auto[0].client_id, auto[0].client);
@@ -153,8 +153,7 @@ JS
     <div class="col-md-6">
         <?= $form->field($model, 'time')->widget(DateTimePicker::class, [
             'clientOptions' => [
-                'endDate' => date('Y-m-d'),
-                'todayBtn' => true,
+                'maxDate' => date('Y-m-d'),
             ],
         ]) ?>
     </div>

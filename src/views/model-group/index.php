@@ -1,10 +1,12 @@
 <?php
 
+use hipanel\models\IndexPageUiOptions;
 use hipanel\modules\stock\grid\ModelGroupGridView;
 use hipanel\modules\stock\models\ModelGroupSearch;
-use hipanel\modules\stock\Module;
+use hipanel\modules\stock\repositories\StockRepository;
 use hipanel\widgets\IndexPage;
 use hiqdev\hiart\ActiveDataProvider;
+use hiqdev\higrid\representations\RepresentationCollection;
 use yii\helpers\Html;
 use yii\web\View;
 
@@ -12,12 +14,13 @@ use yii\web\View;
  * @var View $this
  * @var ActiveDataProvider $dataProvider
  * @var ModelGroupSearch $model
- * @var Module $module
+ * @var StockRepository $stockRepository
+ * @var RepresentationCollection $representationCollection
+ * @var IndexPageUiOptions $uiModel
  */
 
 $this->title = Yii::t('hipanel:stock', 'Model groups');
 $this->params['breadcrumbs'][] = $this->title;
-
 
 ?>
 
@@ -41,10 +44,7 @@ $this->params['breadcrumbs'][] = $this->title;
     <?php $page->endContent() ?>
 
     <?php $page->beginContent('sorter-actions') ?>
-        <?= $page->renderSorter([
-            'attributes' => [
-            ],
-        ]) ?>
+        <?= $page->renderSorter(['attributes' => []]) ?>
     <?php $page->endContent() ?>
 
     <?php $page->beginContent('table') ?>
@@ -53,7 +53,7 @@ $this->params['breadcrumbs'][] = $this->title;
             'dataProvider' => $dataProvider,
             'filterModel' => $model,
             'boxed' => false,
-            'columns' => array_merge(['checkbox', 'name'], array_keys($module->stocksList), ['descr'])
+            'columns' => $representationCollection->getByName($uiModel->representation)->getColumns(),
         ]) ?>
         <?php $page->endBulkForm() ?>
     <?php $page->endContent() ?>

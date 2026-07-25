@@ -16,6 +16,7 @@ use yii\helpers\Html;
  * @var ModelSearch $model
  * @var RepresentationCollection $representationCollection
  * @var ActiveDataProvider $dataProvider
+ * @var Closure $exportVariants
  * @var IndexPageUiOptions $uiModel
  * @var array $types
  * @var array $brands
@@ -28,7 +29,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
 ?>
 
-<?php $page = IndexPage::begin(compact('model', 'dataProvider')) ?>
+<?php $page = IndexPage::begin(['model' => $model, 'dataProvider' => $dataProvider, 'exportVariants' => $exportVariants]) ?>
 
     <?php $page->setSearchFormData(['types' => $types, 'brands' => $brands, 'states' => $states]) ?>
     <?php $page->beginContent('main-actions') ?>
@@ -52,6 +53,7 @@ $this->params['breadcrumbs'][] = $this->title;
             <?= $page->renderBulkButton('copy', Yii::t('hipanel:stock', 'Copy')) ?>
         <?php endif ?>
         <?php if (Yii::$app->user->can('model.delete')) : ?>
+            <?= $page->renderBulkButton('restore', Yii::t('hipanel:stock', 'Restore')) ?>
             <?= $page->renderBulkDeleteButton('delete') ?>
         <?php endif ?>
     <?php $page->endContent() ?>

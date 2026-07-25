@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+
 namespace hipanel\modules\stock\repositories;
 
 use hipanel\helpers\ArrayHelper;
@@ -9,28 +10,29 @@ use hipanel\modules\server\models\Server;
 use yii\base\Application;
 use yii\caching\CacheInterface;
 
-readonly class DisposalRepository
+readonly class LocationRepository
 {
     public function __construct(public CacheInterface $cache, public Application $app)
     {
     }
 
-    public function findForLocation(?string $deviceLocation): array
+    public function findForLocation(?string $deviceLocation, string $locationLike = 'disposal_'): array
     {
-        $devices = $this->getDevices();
-        $deviceId2Location = array_filter(ArrayHelper::map($devices, 'id', 'bindings.location.switch'));
-        if ($deviceLocation === null) {
+        $devices = $this->getDevices($locationLike);
+        $deviceId2Locations = array_filter(ArrayHelper::map($devices, 'id', 'bindings.location.switch'));
+        $deviceLocationIsEmptyOrDevicesAreNotBoundWithLocation = $deviceLocation === null || $deviceId2Locations === [];
+        if ($deviceLocationIsEmptyOrDevicesAreNotBoundWithLocation) {
             return ArrayHelper::map($devices, 'id', 'name');
         }
 
-        return $this->sortBySimilarity($deviceId2Location, $deviceLocation);
+        return $this->sortBySimilarity($deviceId2Locations, $deviceLocation);
     }
 
-    private function getDevices(): array
+    private function getDevices(string $dcLike): array
     {
         return $this->cache->getOrSet(
-            ['disposal_id', $this->app->user->identity->id],
-            fn() => Server::find()->where(['dc_like' => 'disposal_'])->withBindings()->limit(-1)->all(),
+            ['disposal_id', $dcLike, $this->app->user->identity->id],
+            static fn() => Server::find()->where(['dc_like' => $dcLike])->withBindings()->limit(-1)->all(),
             3600
         );
     }

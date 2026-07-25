@@ -44,9 +44,7 @@ class PartGridView extends BoxedGridView
                 'filterOptions' => ['class' => 'narrow-filter'],
                 'filterAttribute' => 'serial_ilike',
                 'format' => 'raw',
-                'value' => function ($model) {
-                    return Html::a(Html::encode($model->serial), ['@part/view', 'id' => $model->id], ['class' => 'text-bold']);
-                },
+                'value' => fn($model) => Html::a(Html::encode($model->serial), ['@part/view', 'id' => $model->id], ['class' => 'text-bold']),
             ],
             'main' => [
                 'class' => RefColumn::class,
@@ -98,6 +96,8 @@ class PartGridView extends BoxedGridView
                 'attribute' => 'model',
                 'format' => 'raw',
                 'label' => Yii::t('hipanel:stock', 'Model'),
+                'filterOptions' => ['class' => 'narrow-filter'],
+                'filterAttribute' => 'model_label_ilike',
             ],
             'model_type' => [
                 'class' => RefColumn::class,
@@ -105,9 +105,8 @@ class PartGridView extends BoxedGridView
                 'gtype' => 'type,model',
                 'i18nDictionary' => 'hipanel:stock',
                 'label' => Yii::t('hipanel:stock', 'Type'),
-                'value' => function ($model) {
-                    return $model->model_type_label;
-                },
+                'format' => 'raw',
+                'value' => static fn($model): ?string => Html::encode($model->model_type_label),
             ],
             'model_type_label' => [
                 'class' => RefColumn::class,
@@ -122,9 +121,8 @@ class PartGridView extends BoxedGridView
                 'gtype' => 'type,brand',
                 'label' => Yii::t('hipanel:stock', 'Manufacturer'),
                 'i18nDictionary' => 'hipanel:stock',
-                'value' => function ($model) {
-                    return Html::encode($model->model_brand_label);
-                },
+                'format' => 'raw',
+                'value' => static fn($model): ?string => Html::encode($model->model_brand_label),
             ],
             'model_brand_label' => [
                 'class' => RefColumn::class,
@@ -209,6 +207,7 @@ class PartGridView extends BoxedGridView
                     ]);
                 },
                 'filterOptions' => ['class' => 'narrow-filter'],
+                'contentOptions' => ['style' => 'white-space: nowrap;'],
                 'format' => 'raw',
                 'visible' => Yii::$app->user->can('order.read') && Yii::$app->user->can('owner-staff'),
                 'value' => function (Part $model): string {
@@ -239,14 +238,18 @@ class PartGridView extends BoxedGridView
                 'class' => CurrencyColumn::class,
                 'filterAttribute' => 'currency',
                 'visible' => Yii::$app->user->can('move.read-all'),
-                'filter' => function ($column, $model, $attribute) {
+                'filter' => static function ($column, $model) {
                     $values = ['usd' => 'USD', 'eur' => 'EUR'];
 
                     return Html::activeDropDownList($model, 'currency', $values, [
                         'class' => 'form-control',
-                        'prompt' => Yii::t('hipanel', '----------'),
+                        'prompt' => Yii::t('hipanel', '--'),
                     ]);
                 },
+            ],
+            'client' => [
+                'class' => ClientColumn::class,
+                'footer' => '<b>' . Yii::t('hipanel:stock', 'TOTAL on screen') . '</b>',
             ],
             'buyer' => [
                 'class' => ClientColumn::class,
@@ -254,6 +257,12 @@ class PartGridView extends BoxedGridView
                 'idAttribute' => 'buyer_id',
                 'attribute' => 'buyer',
                 'footer' => '<b>' . Yii::t('hipanel:stock', 'TOTAL on screen') . '</b>',
+                'visible' => Yii::$app->user->can('access-subclients'),
+            ],
+            'simple_buyer' => [
+                'attribute' => 'buyer',
+                'enableSorting' => true,
+                'filter' => false,
             ],
             'selling_price' => [
                 'format' => 'raw',
@@ -344,6 +353,7 @@ class PartGridView extends BoxedGridView
             'warranty_till' => [
                 'class' => WarrantyColumn::class,
                 'attribute' => 'warranty_till',
+                'contentOptions' => ['style' => 'white-space: nowrap;'],
                 'format' => ['datetime', 'php:Y-m-d'],
             ],
         ]);
@@ -351,9 +361,26 @@ class PartGridView extends BoxedGridView
 
     public static function lastMove(Part|Move $model): string
     {
+        $createLink = function ($name, $id, $class) {
+            $map = [
+                'server' => '@server/view',
+                'switch' => '@hub/view',
+            ];
+
+            if (empty($name)) {
+                return null;
+            }
+
+            if (empty($class) || !isset($map[$class])) {
+                return Html::encode($name);
+            }
+
+            return Html::a(Html::encode($name), [$map[$class], 'id' => $id], ['target' => '_blank']);
+        };
+
         return implode('&nbsp;←&nbsp;', array_filter([
-            Html::tag('b', Html::encode($model->dst_name)),
-            Yii::$app->user->can('move.read-all') ? Html::encode($model->src_name) : null,
+            Html::tag('b', $createLink($model->dst_name, $model->dst_id, $model->dst_class)),
+            Yii::$app->user->can('move.read-all') ? $createLink($model->src_name, $model->src_id, $model->src_class) : null,
         ]));
     }
 }
