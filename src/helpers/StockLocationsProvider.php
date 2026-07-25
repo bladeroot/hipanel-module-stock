@@ -1,35 +1,32 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hipanel\modules\stock\helpers;
 
 use hipanel\components\SettingsStorage;
-use hipanel\helpers\StringHelper;
-use hipanel\modules\stock\models\Model;
-use yii\caching\CacheInterface;
-use yii\helpers\Html;
-use yii\web\User;
+use hipanel\modules\stock\models\VO\LocationItem;
+use hipanel\modules\stock\repositories\StockLocationsRepository;
+use yii\web\Request;
 
 class StockLocationsProvider
 {
-    private const KEY = 'stock-locations-list';
+    /** @var LocationItem[]|null */
     private ?array $locations = null;
+    private const string KEY = 'stock-locations-list';
 
     public function __construct(
         private readonly SettingsStorage $storage,
-        private readonly CacheInterface $cache,
-        private readonly User $user
+        private readonly Request $request,
+        private readonly StockLocationsRepository $locationsRepository,
     )
     {
     }
 
-    public function getLocationsList(): array
+    /**
+     * @return LocationItem[]
+     */
+    public function getAllLocations(): array
     {
-        return $this->cache->getOrSet(
-            [self::KEY, $this->user->id],
-            fn() => Model::perform('stock-locations-list'),
-            300
-        );
+        return $this->locationsRepository->getLocations();
     }
 
     public function setLocations(array $locations): void
@@ -39,71 +36,28 @@ class StockLocationsProvider
 
     public function getLocations(): array
     {
+        $locations = $this->request->get('ModelSearch') ? $this->request->get('ModelSearch')['locations'] ?? null : null;
+
+        if ($locations !== null) {
+            $this->locations = $locations;
+        }
         if ($this->locations === null) {
             $this->locations = $this->storage->getBounded(self::KEY);
         }
-        if (!empty($this->locations)) {
-            $locationIds = array_column($this->getLocationsList(), 'id');
-            $preserveLocations = array_intersect($this->locations, $locationIds);
-            $resetArrayOfLocations = array_values($preserveLocations); // to prevent a situation where, when preparing options for JavaScript, the array becomes an object
 
-            return $resetArrayOfLocations;
+        if (!empty($this->locations)) {
+            // Filter available locations based on selected IDs
+            $allLocations = $this->getAllLocations();
+
+            // Extract IDs from the VO list
+            $availableIds = array_map(fn(LocationItem $item) => $item->id, $allLocations);
+
+            // Intersect saved user preferences with actually available locations
+            $validSelectedIds = array_intersect($this->locations, $availableIds);
+
+            return array_values($validSelectedIds);
         }
 
         return [];
-    }
-
-    public function getIcon(string $location_type): string
-    {
-        $name = match ($location_type) {
-            'chwbox' => 'fa-user',
-            'chwbox_group' => 'fa-users',
-            'deleted' => 'fa-ban',
-            'rma' => 'fa-wrench',
-            'sold' => 'fa-usd',
-            'stock' => 'fa-cube',
-            'supplier' => 'fa-shopping-cart',
-            'trash' => 'fa-trash-o',
-            'used' => 'fa-recycle',
-            'rack' => 'fa-server',
-            'cage' => 'fa-navicon fa-rotate-90',
-            'building' => 'fa-university',
-            'dc' => 'fa-building-o',
-            default => 'fa-cubes',
-        };
-
-        return Html::tag('span', null, ['class' => "fa fa-fw $name"]);
-    }
-
-    public function getLabel(array $location): string
-    {
-        $customer = $this->getCustomer($location);
-        $label = null;
-        if ($location['id'] === 'chwbox' || $location['id'] === 'stock:ANY') {
-            $label = $location['location_name'];
-        } else if ($location['category'] === 'stock') {
-            $label = implode(':', [$location['location_type'], $location['location_name']]) ;
-        } else if ($location['category'] === 'stock_group') {
-            $label = $location['location_name'];
-        } else if ($location['category'] === 'chwbox_group' && $location['location_name'] === $customer) {
-            $label = $location['location_name'];
-        } else if ($location['category'] === 'chwbox_group' && $location['location_name'] !== $customer) {
-            $label = implode('/', [StringHelper::truncate($customer, '7'), $location['location_name']]);
-        } else if ($location['category'] === 'chwbox') {
-            $label = $location['id'];
-        } else if ($location['category'] === 'chwbox_group' && $location['location_type'] === 'chwbox') {
-            $label = implode(' / ', [$customer, $location['location_name']]);
-        } else if ($location['location_type'] === 'chwbox_group') {
-            $label = $customer;
-        }
-
-        return $label ?? $location['id'];
-    }
-
-    public function getCustomer(array $location): string
-    {
-        $customers = explode(',', str_replace(['{', '}'], '', $location['customers'] ?? ''));
-
-        return reset($customers);
     }
 }

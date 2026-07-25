@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 /*
  * Stock Module for Hipanel
@@ -17,16 +17,18 @@ use hipanel\actions\IndexAction;
 use hipanel\actions\PrepareBulkAction;
 use hipanel\actions\RedirectAction;
 use hipanel\actions\RenderAction;
-use hipanel\actions\VariantsAction;
 use hipanel\actions\SmartCreateAction;
+use hipanel\actions\SmartDeleteAction;
 use hipanel\actions\SmartPerformAction;
 use hipanel\actions\SmartUpdateAction;
-use hipanel\actions\SmartDeleteAction;
 use hipanel\actions\ValidateFormAction;
+use hipanel\actions\VariantsAction;
 use hipanel\actions\ViewAction;
 use hipanel\base\CrudController;
 use hipanel\filters\EasyAccessControl;
 use hipanel\helpers\StringHelper;
+use hipanel\modules\stock\actions\BulkMoveAction;
+use hipanel\modules\stock\actions\ExportPartsAction;
 use hipanel\modules\stock\actions\FastMoveAction;
 use hipanel\modules\stock\actions\ResolveRange;
 use hipanel\modules\stock\actions\SetRealSerialsAction;
@@ -38,14 +40,13 @@ use hipanel\modules\stock\models\MoveSearch;
 use hipanel\modules\stock\models\Part;
 use hipanel\modules\stock\models\PartSearch;
 use hipanel\modules\stock\models\query\PartQuery;
-use hipanel\widgets\SynchronousCountEnabler;
+use hipanel\widgets\DataProviderGridRenderer;
 use hipanel\widgets\SummaryWidget;
 use hiqdev\hiart\ActiveQuery;
 use hiqdev\hiart\Collection;
 use Yii;
 use yii\base\DynamicModel;
 use yii\base\Event;
-use yii\grid\GridView;
 use yii\helpers\ArrayHelper;
 use yii\web\ConflictHttpException;
 use yii\web\Response;
@@ -74,6 +75,7 @@ class PartController extends CrudController
                     'sell' => 'part.sell',
                     'sell-by-plan' => 'part.sell',
                     'delete' => 'part.delete',
+                    'erase' => 'part.erase',
                     'calculate-sell-sum' => 'part.sell',
                     'fast-move' => 'move.create',
 
@@ -188,7 +190,7 @@ class PartController extends CrudController
                     'get-total-count' => fn(VariantsAction $action): int => Part::find()->count(),
                     IndexAction::VARIANT_SUMMARY_RESPONSE => function (VariantsAction $action): string {
                         $dataProvider = $action->parent->getDataProvider();
-                        $defaultSummary = (new SynchronousCountEnabler($dataProvider, fn(GridView $grid): string => $grid->renderSummary()))();
+                        $defaultSummary = (new DataProviderGridRenderer($dataProvider))->renderSummary();
                         if ($this->indexPageUiOptionsModel->representation !== 'report') {
                             return $defaultSummary;
                         }
@@ -210,21 +212,16 @@ class PartController extends CrudController
                         }
 
                         return $defaultSummary . SummaryWidget::widget([
-                            'local_sums' => $local_sums,
-                            'total_sums' => $total_sums,
-                        ]);
+                                'local_sums' => $local_sums,
+                                'total_sums' => $total_sums,
+                            ]);
                     },
                 ],
                 'on beforePerform' => function (Event $event) {
-                    /** @var ActiveQuery $query */
-                    $query = $event->sender->getDataProvider()->query;
+                    /** @var PartQuery $query */
+                    $query = $event->sender->getDataProvider()->query->addSelect('selling');
                     if ($this->indexPageUiOptionsModel->representation === 'profit-report') {
-                        $query->joinWith('profit');
-                        $query->andWhere(['with_profit' => true]);
-                        $query->addSelect('selling');
-                    }
-                    if ($this->indexPageUiOptionsModel->representation === 'selling') {
-                        $query->addSelect('selling');
+                        $query->withProfit();
                     }
                 },
                 'data' => function ($action) {
@@ -246,10 +243,10 @@ class PartController extends CrudController
                     $dataProvider = $action->getDataProvider();
                     /** @var PartQuery $query */
                     $query = $dataProvider->query;
-                    $query
-                        ->joinWith('model')
-                        ->withSale()
-                        ->andWhere(['show_deleted' => true]);
+                    $query->joinWith('model')
+                          ->withSale()
+                          ->addSelect('selling')
+                          ->andWhere(['show_deleted' => true]);
                 },
                 'data' => function ($action) {
                     $moveSearch = new MoveSearch();
@@ -305,7 +302,8 @@ class PartController extends CrudController
                 'class' => SmartUpdateAction::class,
                 'success' => Yii::t('hipanel:stock', 'Parts have been moved'),
                 'data' => static function ($action, $data) {
-                    array_map(fn ($model) => $model->move_type = 'repair', $data['models']);
+                    array_map(fn($model) => $model->move_type = 'repair', $data['models']);
+
                     return [
                         'moveTypes' => $action->controller->getMoveTypes('backrma'),
                         'suppliers' => $action->controller->getSuppliers(),
@@ -344,31 +342,50 @@ class PartController extends CrudController
                 },
             ],
             'trash' => [
-                'class' => SmartUpdateAction::class,
+                'class' => BulkMoveAction::class,
                 'scenario' => 'trash',
                 'success' => Yii::t('hipanel:stock', 'Parts have been moved'),
-                'data' => function ($action) {
-                    return [
-                        'moveTypes' => $action->controller->getMoveTypes('trash'),
-                        'suppliers' => $action->controller->getSuppliers(),
-                        'currencyTypes' => $action->controller->getCurrencyTypes(),
-                    ];
-                },
+                'data' => fn(RenderAction $action, array $data): array => [
+                    'moveTypes' => $this->getMoveTypes('trash'),
+                    'suppliers' => $action->controller->getSuppliers(),
+                    'currencyTypes' => $action->controller->getCurrencyTypes(),
+                    'remoteHands' => $this->getRemotehands(),
+                    ...$data,
+                ],
             ],
             'delete' => [
                 'class' => SmartDeleteAction::class,
                 'success' => Yii::t('hipanel:stock', 'Part has been deleted'),
-                'error' => Yii::t('hipanel:stock', 'An error occurred when trying to delete {object}', ['{object}' => Yii::t('hipanel:stock', 'part')]),
-                'queryOptions' => [
-                    'batch' => false,
-                ],
+                'error' => Yii::t(
+                    'hipanel:stock',
+                    'An error occurred when trying to delete {object}',
+                    ['{object}' => Yii::t('hipanel:stock', 'part')]
+                ),
+            ],
+            'bulk-delete-modal' => [
+                'class' => PrepareBulkAction::class,
+                'view' => '_bulkDelete',
+            ],
+            'erase' => [
+                'class' => SmartDeleteAction::class,
+                'success' => Yii::t('hipanel:stock', 'Part has been erased'),
+                'error' => Yii::t(
+                    'hipanel:stock',
+                    'An error occurred when trying to erase {object}',
+                    ['{object}' => Yii::t('hipanel:stock', 'part')]
+                ),
+            ],
+            'bulk-erase-modal' => [
+                'class' => PrepareBulkAction::class,
+                'view' => '_bulkErase',
             ],
             'replace' => [
                 'class' => SmartUpdateAction::class,
                 'scenario' => 'replace',
                 'success' => Yii::t('hipanel:stock', 'Part has been replaced'),
                 'data' => static function ($action, $data) {
-                    array_map(fn ($model) => $model->move_type = 'replace', $data['models']);
+                    array_map(fn($model) => $model->move_type = 'replace', $data['models']);
+
                     return [
                         'moveTypes' => $action->controller->getMoveTypes('backrma'),
                         'suppliers' => $action->controller->getSuppliers(),
@@ -407,16 +424,14 @@ class PartController extends CrudController
                 },
             ],
             'rma' => [
-                'class' => SmartUpdateAction::class,
+                'class' => BulkMoveAction::class,
                 'success' => Yii::t('hipanel:stock', 'Parts have been moved to RMA'),
-                'scenario' => 'move-by-one',
-                'view' => 'moveByOne',
-                'data' => function ($action) {
-                    return [
-                        'types' => $action->controller->getMoveTypes('rma'),
-                        'remotehands' => $action->controller->getRemotehands(),
-                    ];
-                },
+                'view' => 'rma',
+                'data' => fn(RenderAction $action, array $data): array => [
+                    'moveTypes' => $this->getMoveTypes('rma'),
+                    'remoteHands' => $this->getRemotehands(),
+                    ...$data,
+                ],
             ],
             'move' => [
                 'class' => SmartUpdateAction::class,
@@ -514,6 +529,7 @@ class PartController extends CrudController
                     $action->dataProvider->query->andWhere(['groupby' => 'place'])->limit(-1);
                 },
             ],
+            'export-parts' => ExportPartsAction::class,
         ]);
     }
 
@@ -526,7 +542,7 @@ class PartController extends CrudController
         $parts = Part::find()->joinWith('model')->where(['dst_id' => $id])->limit(-1)->all();
 
         return $this->renderPartial('_objectParts', [
-            'parts' => PartSort::byGeneralRules()->values($parts)
+            'parts' => PartSort::byGeneralRules()->values($parts),
         ]);
     }
 
@@ -546,10 +562,10 @@ class PartController extends CrudController
         return $this->getRefs('type,brand', 'hipanel:stock');
     }
 
-    public function getMoveTypes($group = null)
+    public function getMoveTypes(string $group): array
     {
         $query = 'type,move';
-        if ($group && in_array($group, ['add', 'backrma', 'change', 'move', 'rma', 'trash'])) {
+        if (in_array($group, ['add', 'backrma', 'change', 'move', 'rma', 'trash'])) {
             $query = 'type,move,' . $group;
         }
 

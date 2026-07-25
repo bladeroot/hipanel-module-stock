@@ -25,6 +25,7 @@ use Yii;
  *
  * @property Model $model
  * @property string $currency
+ * @property null|bool $is_sold
  * @property-read array $extractedSerials
  * @property-read mixed $title
  * @property-read ActiveQuery $sale
@@ -97,10 +98,14 @@ class Part extends \hipanel\base\Model
                     'company',
                     'device_location',
                     'warranty_till',
+                    'src_class',
+                    'dst_class',
                 ],
                 'safe',
             ],
-            [['sale_id'], 'integer'],
+            [['sale_id', 'client_id'], 'integer'],
+            [['client'], 'string'],
+            [['is_sold'], 'boolean'],
             [['dst_name_in', 'src_name_in'], 'filter', 'filter' => 'trim', 'on' => 'search'],
             [
                 ['dst_name_in', 'src_name_in'],
@@ -109,6 +114,7 @@ class Part extends \hipanel\base\Model
                     $searchParams = [
                         'limit' => 'all',
                         'name_inilike' => $this->{$attribute},
+                        'show_deleted' => true,
                     ];
                     if (str_contains($attribute, 'dst_name')) {
                         $searchParams['types'] = self::getDestinationSubTypes();
@@ -138,10 +144,13 @@ class Part extends \hipanel\base\Model
             [['serials'], 'unique', 'on' => ['create', 'copy']],
 
             // Move by one
-            [['id', 'dst_id', 'src_id', 'partno', 'serial'], 'required', 'on' => 'move-by-one'],
+            [['id', 'dst_id', 'src_id', 'partno', 'serial', 'move_type'], 'required', 'on' => 'move-by-one'],
 
-            // Trash
-            [['id', 'dst_id', 'src_id', 'partno', 'serial', 'move_descr'], 'required', 'on' => 'trash'],
+            // Move Trash/RMA
+            [['id', 'dst_id', 'move_type'], 'required', 'on' => ['trash', 'rma']],
+            [['descr', 'move_descr', 'remotehands', 'remote_ticket', 'hm_ticket'], 'safe', 'on' => ['rma', 'trash']],
+            [['src_id'], 'safe', 'on' => ['trash', 'rma']],
+            [['partId2srcId'], 'safe', 'on' => ['trash', 'rma']],
 
             // Replace
             [['id', 'src_id', 'dst_id', 'move_type', 'serial', 'partno'], 'required', 'on' => 'replace'],
@@ -149,10 +158,11 @@ class Part extends \hipanel\base\Model
             [
                 ['serial'],
                 'match',
-                'pattern' => '/^[a-zA-Z0-9]+$/u',
+                'pattern' => '/^([a-zA-Z0-9-]+|_)$/u',
                 'on' => 'replace',
-                'message' => Yii::t('hipanel:stock', 'The input format must match /^[a-zA-Z0-9]+$/'),
+                'message' => Yii::t('hipanel:stock', 'The input format must match /^[a-zA-Z0-9-]+$/ or the _ character, which will create a random serial.'),
             ],
+            [['disposal_id'], 'string', 'on' => 'replace'],
 
             // Repair
             [['id', 'src_id', 'dst_id', 'move_type'], 'required', 'on' => 'repair'],
@@ -196,7 +206,7 @@ class Part extends \hipanel\base\Model
             [['id', 'model_id'], 'required', 'on' => 'change-model'],
 
             // Delete
-            [['id'], 'required', 'on' => ['delete']],
+            [['id'], 'required', 'on' => ['delete', 'erase']],
         ];
     }
 
@@ -240,6 +250,8 @@ class Part extends \hipanel\base\Model
             'price' => Yii::t('hipanel:stock', 'Purchase price'),
             'order_id' => Yii::t('hipanel:stock', 'Order'),
             'device_location' => Yii::t('hipanel:stock', 'DC location'),
+            'disposal_id' => Yii::t('hipanel:stock', 'Disposal'),
+            'is_sold' => Yii::t('hipanel:stock', 'Is sold?'),
         ]);
     }
 
@@ -272,6 +284,7 @@ class Part extends \hipanel\base\Model
             'copy' => 'create',
             'trash' => 'move',
             'move-by-one' => 'move',
+            'rma' => 'move',
             'change-model'=> 'update',
         ];
     }
@@ -284,6 +297,16 @@ class Part extends \hipanel\base\Model
     public function isDeletable(): bool
     {
         return $this->first_move_id === $this->last_move_id;
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->state === self::STATE_DELETED;
+    }
+
+    public function isNotDeleted(): bool
+    {
+        return !$this->isDeleted();
     }
 
     public function getProfit(): ActiveQuery

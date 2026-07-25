@@ -32,13 +32,12 @@ use yii\helpers\Html;
         'descr',
     ],
 ]) ?>
+
 <div class="container-items">
     <?php foreach ($models as $i => $model) : ?>
-        <?php
-        if ($model->scenario === 'update') {
-            echo Html::activeHiddenInput($model, "[$i]id");
-        }
-        ?>
+        <?php if ($model->scenario === 'update') : ?>
+            <?= Html::activeHiddenInput($model, "[$i]id") ?>
+        <?php endif ?>
         <div class="item">
             <div class="box box-widget">
                 <div class="box-header with-border">
@@ -50,28 +49,25 @@ use yii\helpers\Html;
                             </button>
                             <button type="button" class="btn btn-box-tool add-item"><i class="fa fa-plus"></i></button>
                         </div>
-                    <?php endif; ?>
+                    <?php endif ?>
                 </div>
                 <div class="box-body">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-lg-4 col-md-6">
                             <?= $form->field($model, "[$i]name") ?>
+                            <?= $form->field($model, "[$i]descr")->textarea(['rows' => 3]) ?>
                         </div>
 
-                        <div class="col-md-3">
-                            <?= $form->field($model, "[$i]descr")->textarea(['rows' => 1]) ?>
-                        </div>
-
-                        <?php foreach ($model->supportedLimitTypes as $type => $label) : ?>
-                            <div class="col-md-1">
-                                <?= $form->field($model, "[$i]data[limit][$type]")->label($label) ?>
+                        <?php foreach ($model->getStockList() as $alias) : ?>
+                            <div class="col-lg-2 col-md-6">
+                                <?= $form->field($model, "[$i]data[limit][$alias]")->input('number', ['step' => '1', 'min' => '0'])->label($alias) ?>
                             </div>
-                        <?php endforeach; ?>
+                        <?php endforeach ?>
                     </div>
                 </div>
             </div>
         </div>
-    <?php endforeach; ?>
+    <?php endforeach ?>
 </div>
 
 <?php DynamicFormWidget::end() ?>

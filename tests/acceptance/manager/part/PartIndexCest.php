@@ -51,9 +51,10 @@ class PartIndexCest
             Select2::asAdvancedSearch($I, 'Currency'),
             Input::asAdvancedSearch($I, 'Limit'),
             Input::asAdvancedSearch($I, 'Reserve'),
-            Select2::asAdvancedSearch($I, 'Buyers'),
-            Input::asAdvancedSearch($I, 'First move'),
-            Input::asAdvancedSearch($I, 'Last move'),
+            Input::asAdvancedSearch($I, 'First move description'),
+            Input::asAdvancedSearch($I, 'Last move description'),
+            Input::asAdvancedSearch($I, 'First move source regexp'),
+            Input::asAdvancedSearch($I, 'First move destination regexp'),
         ]);
     }
 

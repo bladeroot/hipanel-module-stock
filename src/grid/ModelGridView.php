@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 /*
  * Stock Module for Hipanel
@@ -17,18 +17,26 @@ use hipanel\grid\RefColumn;
 use hipanel\modules\stock\helpers\StockLocationsProvider;
 use hipanel\modules\stock\models\Model;
 use Yii;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
+use yii\web\User;
 
 class ModelGridView extends BoxedGridView
 {
-    public function __construct(private readonly StockLocationsProvider $locationsProvider, $config = [])
+    private array $stockColumns;
+
+    public function __construct(
+        private readonly StockLocationsProvider $locationsProvider,
+        private readonly User $user,
+        $config = []
+    )
     {
+        $this->stockColumns = $this->generateStockColumns();
         parent::__construct($config);
     }
 
     public function columns()
     {
-        $user = Yii::$app->user;
         return array_merge(parent::columns(), [
             'type' => [
                 'filterOptions' => ['class' => 'narrow-filter'],
@@ -66,9 +74,10 @@ class ModelGridView extends BoxedGridView
                 'format' => 'raw',
                 'value' => function (Model $model) {
                     return Html::a(Html::encode($model->partno), [
-                        '@model/view', 'id' => $model->id
+                        '@model/view',
+                        'id' => $model->id,
                     ], ['class' => 'text-bold']);
-                }
+                },
             ],
             'descr' => [
                 'enableSorting' => false,
@@ -82,7 +91,7 @@ class ModelGridView extends BoxedGridView
                 'value' => function (Model $model) {
                     return $model->showModelPrices($model->last_prices);
                 },
-                'visible' => $user->can('move.read-all'),
+                'visible' => $this->user->can('move.read-all'),
             ],
             'model_group' => [
                 'label' => Yii::t('hipanel:stock', 'Group'),
@@ -91,37 +100,36 @@ class ModelGridView extends BoxedGridView
                 'format' => 'raw',
                 'value' => function (Model $model) {
                     $group = Html::encode($model->group);
+
                     return Html::a($group, ['@model-group/view', 'id' => $model->group_id], [
                         'title' => $group,
-                        'style' => 'display: inline-block; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
+                        'style' => 'display: inline-block; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;',
                     ]);
-                }
+                },
             ],
             'actions' => [
                 'class' => ActionColumn::class,
                 'template' => '{view} {update}',
                 'header' => Yii::t('hipanel', 'Actions'),
             ],
-        ], $this->generateStockColumns());
+        ], $this->stockColumns);
     }
 
     private function generateStockColumns(): array
     {
         $result = [];
-        $locations = $this->locationsProvider->getLocationsList();
-        $locationIds = array_column($locations, 'id');
+        $locations = ArrayHelper::index($this->locationsProvider->getAllLocations(), 'id');
         foreach ($this->locationsProvider->getLocations() as $key) {
-            $locationId = array_search($key, $locationIds, true);
-            if ($locationId === false) {
-                continue;
-            }
-            $location = $locations[$locationId];
-            $icon = $this->locationsProvider->getIcon($location['location_type']);
-            $label = $this->locationsProvider->getLabel($location);
+            $location = $locations[$key];
+            $icon = Html::tag('span', null, [
+                    'class' => "fa fa-fw " . $location->icon,
+                ]
+            );
+            $label = $location->label;
             $result[$key] = [
                 'attribute' => $key,
                 'label' => implode(' ', [$icon, $label]),
-                'headerOptions' => ['title' => $location['location_type'], 'style' => 'white-space: nowrap;'],
+                'headerOptions' => ['title' => $location->type->value, 'style' => 'white-space: nowrap;'],
                 'encodeLabel' => false,
                 'enableSorting' => false,
                 'filter' => false,

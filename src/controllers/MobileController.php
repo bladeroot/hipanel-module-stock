@@ -1,5 +1,4 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hipanel\modules\stock\controllers;
 
@@ -17,6 +16,7 @@ use hipanel\modules\stock\models\Part;
 use hipanel\modules\stock\Module;
 use hiqdev\hiart\ActiveRecord;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -130,10 +130,11 @@ class MobileController extends Controller
                 }
             }
             $serials = array_map(static fn(string $serial): string => "- " . $serial, ArrayHelper::getColumn($requestData['parts'], 'serial'));
+            $userMessage = str_replace("PI::", 'The parts have been successfully moved by user ', $requestData['personal']);
             $messageData = [
                 'taskUrl' => $requestData['taskUrl'],
                 'message' => implode("\n", [
-                    $requestData['personal'],
+                    $userMessage,
                     $requestData['comment'],
                     implode("\n", $serials),
                 ]),
@@ -143,11 +144,11 @@ class MobileController extends Controller
             }
             $response = $this->api->post('IssueComment', [], $messageData);
             $data = $response->getData();
-            if (isset($data['status']) && $data['status'] === 'ok') {
-                return $this->response(['status' => 'success']);
+            if (isset($data['error'])) {
+                throw new RuntimeException($data['error_description'] ?? $data['error']);
             }
 
-            throw new \RuntimeException('Failed to add new issue comment to YouTrack');
+            return $this->response(['status' => 'success']);
         } catch (Exception $e) {
             $errorMessage = sprintf('Failed to send: %s', $e->getMessage());
             $this->log->error($errorMessage, ['exception' => $e]);
@@ -162,6 +163,7 @@ class MobileController extends Controller
         return $this->response([
             ['name' => 'NL:AMS:EQ:AM7'],
             ['name' => 'NL:AMS:EQ:AM11'],
+            ['name' => 'NL:AMS:DR:AMS3'],
             ['name' => 'NL:AMS:DR:AMS17'],
             ['name' => 'USA:ASH:EQ:DC10'],
         ]);
@@ -188,7 +190,8 @@ class MobileController extends Controller
     public function actionResolveCode($code, $location): Response
     {
         $responseTemplate = ['resolveLike' => null, 'result' => null];
-        if ($code === "PI::" . Yii::$app->user->identity->email) {
+        $user = Yii::$app->user->identity;
+        if ($code === "PI::" . $user->email || (filter_var($code, FILTER_VALIDATE_EMAIL) && $code === $user->email)) {
             $responseTemplate['resolveLike'] = 'personal';
             $responseTemplate['result'] = $code;
         }

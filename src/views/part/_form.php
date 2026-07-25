@@ -2,13 +2,14 @@
 
 use hipanel\modules\stock\models\Part;
 use hipanel\modules\stock\widgets\combo\CompanyCombo;
+use hipanel\modules\stock\widgets\combo\OrderCombo;
 use hipanel\modules\stock\widgets\combo\PartDestinationCombo;
 use hipanel\modules\stock\widgets\combo\ModelCombo;
 use hipanel\modules\stock\widgets\combo\PartnoCombo;
 use hipanel\modules\stock\widgets\combo\SourceCombo;
 use hipanel\widgets\AmountWithCurrency;
 use hipanel\widgets\Box;
-use hipanel\widgets\DateTimePicker;
+use hipanel\widgets\DatePicker;
 use hipanel\widgets\DynamicFormCopyButton;
 use hipanel\widgets\DynamicFormWidget;
 use yii\bootstrap\ActiveForm;
@@ -24,11 +25,11 @@ use yii\web\View;
 $this->registerJs(/** @lang JavaScript */ <<<JS
 (() => {
   $(document).on("select2:select", "[id$='partno']", function (event) {
-    const datetimePlugin = $(event.target).parents(".item").find("[id$='warranty_till']").parent().data('datetimepicker');
+    const fp = $(event.target).parents(".item").find("[id$='warranty_till']").get(0)._flatpickr;
     if ('params' in event) {
       const { warranty_months } = event.params.data;
       if (warranty_months) {
-        datetimePlugin.setDate(moment().add(warranty_months, 'months').toDate());
+        fp.setDate(moment().add(warranty_months, 'months').toDate());
       }
     }
   });
@@ -116,13 +117,7 @@ JS
                                 'multiple' => true,
                             ]) ?>
                         <?php endif; ?>
-                        <?= $form->field($model, "[$i]warranty_till")->widget(DateTimePicker::class, [
-                            'clientOptions' => [
-                                'format' => 'yyyy-mm-dd',
-                                'minView' => 2,
-                                'todayHighlight' => true,
-                            ],
-                        ]) ?>
+                        <?= $form->field($model, "[$i]warranty_till")->widget(DatePicker::class) ?>
                     </div>
                     <div class="col-md-6">
                         <div class="row">
@@ -147,6 +142,9 @@ JS
                             <div class="col-md-6">
                                 <?= $form->field($model, "[$i]company_id")->widget(CompanyCombo::class) ?>
                             </div>
+                            <div class="col-md-6">
+                                <?= $form->field($model, "[$i]order_id")->widget(OrderCombo::class) ?>
+                            </div>
                         </div>
                     </div>
                 <?php else : ?>
@@ -167,18 +165,12 @@ JS
                     <div class="col-md-12">
                         <div class="row">
                             <div class="col-md-3">
-                                <?= $form->field($model, "[$i]warranty_till")->widget(DateTimePicker::class, [
-                                    'clientOptions' => [
-                                        'format' => 'yyyy-mm-dd',
-                                        'minView' => 2,
-                                        'todayHighlight' => true,
-                                    ],
-                                ]) ?>
+                                <?= $form->field($model, "[$i]warranty_till")->widget(DatePicker::class) ?>
                             </div>
                             <div class="col-md-3">
                                 <?= $form->field($model, "[$i]company_id")->widget(CompanyCombo::class) ?>
                             </div>
-                            <div class="col-md-6 <?= AmountWithCurrency::$widgetClass ?>">
+                            <div class="col-md-3 <?= AmountWithCurrency::$widgetClass ?>">
                                 <?= $form->field($model, "[$i]price")->widget(AmountWithCurrency::class, [
                                     'currencyAttributeName' => "[$i]currency",
                                     'currencyAttributeOptions' => [
@@ -186,6 +178,9 @@ JS
                                     ],
                                 ]) ?>
                                 <?= $form->field($model, "[$i]currency", ['template' => '{input}{error}'])->hiddenInput() ?>
+                            </div>
+                            <div class="col-md-3">
+                                <?= $form->field($model, "[$i]order_id")->widget(OrderCombo::class) ?>
                             </div>
                         </div>
                     </div>
